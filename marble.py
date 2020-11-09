@@ -2,9 +2,9 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import sympy as sym
 from scipy.misc import derivative
 import argparse
+from datetime import datetime
 
 
 ################################### START ARGUMENTS ###################################
@@ -18,13 +18,13 @@ parser.add_argument('--start', type=list, default=np.array([0,0]), required=Fals
                      help='start. the starting point of the marble. default is ([0,0]).')
 
 parser.add_argument('--v0', type=np.array, default=np.array([0,0]), required=False,
-                     help='v0. Initial speed of the marble in format of ([0,0]). units of m/s, default is 0m/s.')
+                     help='v0. Initial speed of the marble in format of ([0,0]). Vector size in units of m/s, default is 0m/s.')
 
 parser.add_argument('--intervals', type=int, default=0.1, required=False,
                      help='intervals. the time gaps between snapshots of the plot. units of s, default is 100ms.')
 
-parser.add_argument('--points', type=int, default=50, required=False,
-                     help='points. the number of snapshots taken, default is 50 points.')
+parser.add_argument('--points', type=int, default=100, required=False,
+                     help='points. the number of snapshots taken, default is 100 points.')
 
 args = parser.parse_args()
 
@@ -63,8 +63,7 @@ class marble:
 
     # calculate the force vector of the gravity.
     def get_Fg(self):
-        return np.array([self.loc[0],-self.mass*9.8])
-
+        return np.array([self.loc[0], self.loc[1]-self.mass*9.8])
 
     # Newton's equations
     def get_A(self, force):
@@ -90,14 +89,40 @@ class marble:
             return False
         return True
 
+    # add frame and parameter data to plot
+    def add_data_to_plot(self):
+        plt.text(-0.1, -0.6, "mass: " + str(self.mass) + "g")
+        plt.text(-0.1, -0.7, "points: " + str(self.intervals_count))
+        plt.text(-0.1, -0.8, "intervals: " + str(self.intervals)+"s")
+        plt.text(-0.1, -0.9, "duration: " + str(format(self.intervals * (self.intervals_count),'.3f')) + "s")
+        plt.text(-0.1, -1, "v0: (" +str(format(v0[0],'.3f'))+","+str(format(v0[1],'.3f'))+") m/s")
+
     # main simulation function
     def simulate(self):
 
+        print("Setting up marble simulation")
+        print("mass: " + str(self.mass) + "g")
+        print("intervals: " + str(self.intervals)+"s")
+        print("v0: (" +str(format(v0[0],'.3f'))+","+str(format(v0[1],'.3f'))+") m/s")
+        print("stating point: (" +str(format(start[0],'.3f'))+","+str(format(start[1],'.3f'))+")\n")
+
+        # lists to collect data for X(t)
+        t_list =[]
+        x_list =[]
+        t_list.append(0)
+        x_list.append(start[0])
+
         marble.create_arena()
+        plot_XY = plt.figure(1)
         plt.suptitle('Marble simulation output: Y(x)', fontsize=14, fontweight='bold')
-        plt.text(self.loc[0],self.loc[1], "_______START", color='green', fontsize=12)
+        plt.xlabel("X [m]")
+        plt.ylabel("Y [m]")
+        plt.text(self.loc[0],self.loc[1], "_______START("+str(format(self.loc[0],'.3f'))+","+str(format(self.loc[1],'.3f'))+")", color='green', fontsize=12)
         add_data = plt.plot(self.loc[0], self.loc[1], 'gX')
 
+        print("arena created.\n")
+        starttime = datetime.now()
+        print("Starting simulation...")
         while self.intervals_count <= self.points:
             new_A = marble.get_A(marble.get_Fg())
 
@@ -107,28 +132,43 @@ class marble:
 
             # case the marble flew out
             if self.inarena == 0:
-                plt.text(0, 0.1, "mass flew out of arena after "+ str(self.intervals * self.intervals_count) + " sec.")
-                plt.show()
-                return
-
+                plt.text(0, 0.1, "mass flew out of the arena after "+ str(self.intervals * self.intervals_count) + " sec.")
+                break
             
             if self.intervals_count == self.points:
                 add_data = plt.plot(new_X[0], new_X[1], 'rX')
-                plt.text(new_X[0],new_X[1], "________END", color='red', fontsize=12)
-                plt.text(0, 0.1, "Simulation ran for "+ str(self.intervals * self.intervals_count) + " sec, ploting "+ str(self.points) + " points.")
+                plt.text(new_X[0],new_X[1], "________END("+str(format(new_X[0],'.3f'))+","+str(format(new_X[1],'.3f'))+")", color='red', fontsize=12)
+
+                #plt.text(0, 0.1, "Simulation ran for "+ str(self.intervals * self.intervals_count) + " sec, ploting "+ str(self.points) + " points at "+str(self.intervals)+"s intervals.")
             else:
                 add_data = plt.plot(new_X[0], new_X[1], 'g+')
                 plt.text(new_X[0],new_X[1], str(self.intervals_count + 1))
             self.speed = new_V
             self.loc = new_X
             self.intervals_count += 1
-            plt.xlabel("X [m]")
-            plt.ylabel("Y [m]")
+            t_list.append(self.intervals_count*self.intervals)
+            x_list.append(self.loc[0])
+        
+        marble.add_data_to_plot()
+        print("Finished after "+str(datetime.now()-starttime)+"\n")
 
+        # build plot X(t)
+        plot_XT= plt.figure(2)
+        plt.scatter(t_list, x_list)
+        plt.plot(t_list, x_list)
+        plt.suptitle('Marble simulation output: X(t)', fontsize=14, fontweight='bold')
+        plt.xlabel("t [s]")
+        plt.ylabel("X [m]")
+        plt.text(t_list[0], x_list[0], "    START\n    (x="+str(format(x_list[0],'.3f'))+"m)", color='green', fontsize=10)
+        plt.text(t_list[-1], x_list[-1], "END\n(x="+str(format(x_list[-1],'.3f'))+"m)", color='red', fontsize=10)
+
+        print ("Displaying plot Y(x):\n")
+        print ("Displaying plot X(t):\n")
         plt.show()
+        print ("Done.")
         return
             
-################################### END FUNCTIONSS ##################################
+################################### END FUNCTIONS ###################################
 
 #################################### EXECUTION ######################################
 
