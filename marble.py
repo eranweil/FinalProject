@@ -94,8 +94,11 @@ class marble:
     def simulate(self):
 
         marble.create_arena()
+        plt.suptitle('Marble simulation output: Y(x)', fontsize=14, fontweight='bold')
+        plt.text(self.loc[0],self.loc[1], "_______START", color='green', fontsize=12)
+        add_data = plt.plot(self.loc[0], self.loc[1], 'gX')
 
-        while self.intervals_count < self.points:
+        while self.intervals_count <= self.points:
             new_A = marble.get_A(marble.get_Fg())
 
             new_V = marble.get_V(new_A)
@@ -104,19 +107,30 @@ class marble:
 
             # case the marble flew out
             if self.inarena == 0:
-                plt.text(0, -1.2, "mass flew out of arena after "+ str(self.intervals * self.intervals_count) + " sec.")
+                plt.text(0, 0.1, "mass flew out of arena after "+ str(self.intervals * self.intervals_count) + " sec.")
                 plt.show()
                 return
 
-            add_data = plt.plot(new_X[0], new_X[1], 'r+')
-            plt.text(new_X[0],new_X[1], str(self.intervals_count))
+            
+            if self.intervals_count == self.points:
+                add_data = plt.plot(new_X[0], new_X[1], 'rX')
+                plt.text(new_X[0],new_X[1], "________END", color='red', fontsize=12)
+                plt.text(0, 0.1, "Simulation ran for "+ str(self.intervals * self.intervals_count) + " sec, ploting "+ str(self.points) + " points.")
+            else:
+                add_data = plt.plot(new_X[0], new_X[1], 'g+')
+                plt.text(new_X[0],new_X[1], str(self.intervals_count + 1))
             self.speed = new_V
             self.loc = new_X
             self.intervals_count += 1
+            plt.xlabel("X [m]")
+            plt.ylabel("Y [m]")
 
         plt.show()
         return
             
+################################### END FUNCTIONSS ##################################
+
+#################################### EXECUTION ######################################
 
 marble = marble(mass, start, v0, intervals, points)
 marble.simulate()
