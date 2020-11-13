@@ -6,3 +6,4 @@ speed & location simulated in MC.
 * numpy==1.19.4
 * matplotlib==3.3.2
 * scipy==1.5.4
+* progressbar==2.5
