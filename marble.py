@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.misc import derivative
 import argparse
+import progressbar
 from datetime import datetime
 
 
@@ -65,15 +66,6 @@ class marble:
     def get_Fg(self):
         return np.array([self.loc[0], self.loc[1]-self.mass*9.8])
 
-
-    def get_Fu(self):
-        liquid_viscosity = 0.89
-        shear_rate = 0.00001*(1-abs(self.loc[1]))
-        area_of_plate = abs(np.pi / 2 -self.loc[0]) * 2
-        Fu = liquid_viscosity * shear_rate * area_of_plate
-        ret=np.array([self.loc[0] - abs(self.speed[0] * Fu) / self.speed[0] , self.loc[1] - abs(self.speed[1] * Fu) / self.speed[1]])
-        return ret
-
     # Newton's equations
     def get_A(self, force):
         # adjust direction of A
@@ -101,9 +93,9 @@ class marble:
     # add frame and parameter data to plot
     def add_data_to_plot(self):
         plt.text(-0.1, -0.6, "mass: " + str(self.mass) + "g")
-        plt.text(-0.1, -0.7, "points: " + str(self.intervals_count))
+        plt.text(-0.1, -0.7, "points: " + str(self.intervals_count-1))
         plt.text(-0.1, -0.8, "intervals: " + str(self.intervals)+"s")
-        plt.text(-0.1, -0.9, "duration: " + str(format(self.intervals * (self.intervals_count),'.3f')) + "s")
+        plt.text(-0.1, -0.9, "duration: " + str(format(self.intervals * (self.intervals_count-1),'.3f')) + "s")
         plt.text(-0.1, -1, "v0: (" +str(format(v0[0],'.3f'))+","+str(format(v0[1],'.3f'))+") m/s")
 
     # main simulation function
@@ -112,8 +104,8 @@ class marble:
         print("Setting up marble simulation")
         print("mass: " + str(self.mass) + "g")
         print("intervals: " + str(self.intervals)+"s")
-        print("v0: (" +str(format(v0[0],'.3f'))+","+str(format(v0[1],'.3f'))+") m/s")
-        print("stating point: (" +str(format(start[0],'.3f'))+","+str(format(start[1],'.3f'))+")\n")
+        print("v0: (" +str(format(v0[0],'.3f'))+" , "+str(format(v0[1],'.3f'))+") m/s")
+        print("stating point: (" +str(format(start[0],'.3f'))+" , "+str(format(start[1],'.3f'))+")\n")
 
         # lists to collect data for X(t)
         t_list =[]
@@ -122,6 +114,8 @@ class marble:
         x_list.append(start[0])
 
         marble.create_arena()
+
+        # setteing up Y(t) plot
         plot_XY = plt.figure(1)
         plt.suptitle('Marble simulation output: Y(x)', fontsize=14, fontweight='bold')
         plt.xlabel("X [m]")
@@ -131,10 +125,15 @@ class marble:
 
         print("arena created.\n")
         starttime = datetime.now()
-        print("Starting simulation...")
-        while self.intervals_count <= self.points:
+        print("Simulation in progress...")
 
-            Feq = np.add(marble.get_Fg(), marble.get_Fu())
+        # creating progress bar
+        bar = progressbar.ProgressBar(maxval=self.points, \
+        widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+        bar.start()
+
+        # main simulation loop
+        while self.intervals_count <= self.points:
 
             new_A = marble.get_A(marble.get_Fg())
 
@@ -155,12 +154,14 @@ class marble:
             else:
                 add_data = plt.plot(new_X[0], new_X[1], 'g+')
                 plt.text(new_X[0],new_X[1], str(self.intervals_count + 1))
+            bar.update(self.intervals_count)
             self.speed = new_V
             self.loc = new_X
             self.intervals_count += 1
             t_list.append(self.intervals_count*self.intervals)
             x_list.append(self.loc[0])
         
+        bar.finish()
         marble.add_data_to_plot()
         print("Finished after "+str(datetime.now()-starttime)+"\n")
 
