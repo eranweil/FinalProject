@@ -65,6 +65,15 @@ class marble:
     def get_Fg(self):
         return np.array([self.loc[0], self.loc[1]-self.mass*9.8])
 
+
+    def get_Fu(self):
+        liquid_viscosity = 0.89
+        shear_rate = 0.00001*(1-abs(self.loc[1]))
+        area_of_plate = abs(np.pi / 2 -self.loc[0]) * 2
+        Fu = liquid_viscosity * shear_rate * area_of_plate
+        ret=np.array([self.loc[0] - abs(self.speed[0] * Fu) / self.speed[0] , self.loc[1] - abs(self.speed[1] * Fu) / self.speed[1]])
+        return ret
+
     # Newton's equations
     def get_A(self, force):
         # adjust direction of A
@@ -124,6 +133,9 @@ class marble:
         starttime = datetime.now()
         print("Starting simulation...")
         while self.intervals_count <= self.points:
+
+            Feq = np.add(marble.get_Fg(), marble.get_Fu())
+
             new_A = marble.get_A(marble.get_Fg())
 
             new_V = marble.get_V(new_A)
