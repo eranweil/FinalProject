@@ -6,34 +6,54 @@ from scipy.misc import derivative
 import argparse
 import progressbar
 from datetime import datetime
-
+import os
 
 ################################### START ARGUMENTS ###################################
 
-parser = argparse.ArgumentParser(description='Script purpose: Simulate and plot a marble in a hole')
+parser = argparse.ArgumentParser(description='Script purpose: Simulate and plot the position of a marble in a hole')
 
 parser.add_argument('--mass', type=int, default=1, required=False,
-                     help='mass. in units of g, default is 1g.')
+                     help='mass of the marble. units of g, default is 1g.')
 
-parser.add_argument('--start', type=list, default=np.array([0,0]), required=False,
-                     help='start. the starting point of the marble. default is ([0,0]).')
+parser.add_argument('--start', type=str, default='0,0', required=False,
+                     help='Starting point of the marble. format: start=x,y , default is [0,0].')
 
-parser.add_argument('--v0', type=np.array, default=np.array([0,0]), required=False,
-                     help='v0. Initial speed of the marble in format of ([0,0]). Vector size in units of m/s, default is 0m/s.')
+parser.add_argument('--v0', type=str, default='0,0', required=False,
+                     help='Initial speed vector of the marble. format: v0=x,y , default is [0,0]m/s.')
 
 parser.add_argument('--intervals', type=int, default=0.1, required=False,
-                     help='intervals. the time gaps between snapshots of the plot. units of s, default is 100ms.')
+                     help='Time gaps between snapshots of the plot. units of s, default is 0.1s.')
 
 parser.add_argument('--points', type=int, default=100, required=False,
-                     help='points. the number of snapshots taken, default is 100 points.')
+                     help='Number of snapshots taken, default is 100 points.')
+
+parser.add_argument('--save_copy', type=str, default='True', required=False,
+                     help='Saves a copy of the output. default is False.')
+
+parser.add_argument('--show', type=str, default='True', required=False,
+                     help='Show me the results. default is True. If false, saves a copy of the results.')
 
 args = parser.parse_args()
 
 mass = args.mass
-start = args.start
-v0 = args.v0
+start = np.fromstring(args.start, sep=',')
+v0 = np.fromstring(args.v0, sep=',')
 intervals = args.intervals
 points = args.points
+save_copy = args.save_copy
+if save_copy.lower() in ['false','f']:
+    save_copy = False
+else:
+    save_copy = True
+show = args.show
+if show.lower() in ['false','f']:
+    show = False
+else:
+    show = True
+
+if not show:
+    save_copy = True
+    print("\n\tNOTE: simulation output will be saved since you chose not to show results.")
 
 ################################### END ARGUMENTS ###################################
 
@@ -98,14 +118,22 @@ class marble:
         plt.text(-0.1, -0.9, "duration: " + str(format(self.intervals * (self.intervals_count-1),'.3f')) + "s")
         plt.text(-0.1, -1, "v0: (" +str(format(v0[0],'.3f'))+","+str(format(v0[1],'.3f'))+") m/s")
 
+
+    def save_plots(self, name):
+        if not os.path.exists('output_plots'):
+            os.makedirs('output_plots')
+        path = 'output_plots\\'+str(datetime.now().strftime("%x")).replace('/','-')+'_'+ str(datetime.now().strftime("%X")).replace(':','')+'_'+str(name)+'.png'
+        plt.savefig(path)
+        print("\n\tSaved "+name+" plot at:\n\t"+path)
+
     # main simulation function
     def simulate(self):
 
-        print("Setting up marble simulation")
-        print("mass: " + str(self.mass) + "g")
-        print("intervals: " + str(self.intervals)+"s")
-        print("v0: (" +str(format(v0[0],'.3f'))+" , "+str(format(v0[1],'.3f'))+") m/s")
-        print("stating point: (" +str(format(start[0],'.3f'))+" , "+str(format(start[1],'.3f'))+")\n")
+        print("\n\tSetting up marble simulation")
+        print("\tmass: " + str(self.mass) + "g")
+        print("\tintervals: " + str(self.intervals)+"s")
+        print("\tv0: (" +str(format(v0[0],'.3f'))+" , "+str(format(v0[1],'.3f'))+") m/s")
+        print("\tstating point: (" +str(format(start[0],'.3f'))+" , "+str(format(start[1],'.3f'))+")\n")
 
         # lists to collect data for X(t)
         t_list =[]
@@ -123,13 +151,13 @@ class marble:
         plt.text(self.loc[0],self.loc[1], "_______START("+str(format(self.loc[0],'.3f'))+","+str(format(self.loc[1],'.3f'))+")", color='green', fontsize=12)
         add_data = plt.plot(self.loc[0], self.loc[1], 'gX')
 
-        print("arena created.\n")
+        print("\tarena created.\n")
         starttime = datetime.now()
-        print("Simulation in progress...")
+        print("\tSimulation in progress...")
 
         # creating progress bar
         bar = progressbar.ProgressBar(maxval=self.points, \
-        widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+        widgets=[progressbar.Bar('=', '\t[', ']'), ' ', progressbar.Percentage()])
         bar.start()
 
         # main simulation loop
@@ -163,7 +191,12 @@ class marble:
         
         bar.finish()
         marble.add_data_to_plot()
-        print("Finished after "+str(datetime.now()-starttime)+"\n")
+        print("\n\tSimulation finished after "+str(datetime.now()-starttime)+"\n")
+
+        if self.intervals_count > 2000:
+            print("\n\tPreparing data, please wait..."+"\n")
+        if save_copy:
+            marble.save_plots('Yx')
 
         # build plot X(t)
         plot_XT= plt.figure(2)
@@ -175,9 +208,17 @@ class marble:
         plt.text(t_list[0], x_list[0], "    START\n    (x="+str(format(x_list[0],'.3f'))+"m)", color='green', fontsize=10)
         plt.text(t_list[-1], x_list[-1], "END\n(x="+str(format(x_list[-1],'.3f'))+"m)", color='red', fontsize=10)
 
-        print ("Displaying plot Y(x):\n")
-        print ("Displaying plot X(t):\n")
-        plt.show()
+        if save_copy:
+            marble.save_plots('Xt')
+        else:
+            print ("\n\tNOTE: you can autosave the plots next time by adding 'save_copy=t' to the simulation cmd.\n")
+
+        if show:
+            print ("\n\tDisplaying plot Y(x):\n")
+            print ("\tDisplaying plot X(t):\n")
+            print ("\tClose all plot windows and press ENTER to continue...\n")
+        print("\n\tScript finished after "+str(datetime.now()-starttime)+"\n")
+        plt.show(block=show)
         print ("Done.")
         return
             
